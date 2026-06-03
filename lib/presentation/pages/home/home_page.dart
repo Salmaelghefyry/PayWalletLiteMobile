@@ -58,7 +58,7 @@ class _HomeTab extends StatelessWidget {
       SliverAppBar(
         automaticallyImplyLeading: false, floating: true, toolbarHeight: 62,
         title: Row(children: [
-          Image.asset('assets/images/logo.png', width: 28, height: 28),
+          Image.asset('assets/images/logo_white.png', width: 28, height: 28),
           const SizedBox(width: 8),
           RichText(text: const TextSpan(children: [
             TextSpan(text: 'Pay',    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.teal)),
@@ -220,12 +220,12 @@ class _WalletSummary extends StatelessWidget {
       const SizedBox(height: 12),
       Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${s.balance}: ${wallet.balance.toStringAsFixed(0)} XOF', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.ink)),
+          Text('${s.balance}: ${wallet.balance.toStringAsFixed(0)} MAD', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.ink)),
           const SizedBox(height: 6),
           ClipRRect(borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(value: wallet.balance / wallet.monthlyLimit, minHeight: 5, backgroundColor: C.surface3, color: C.teal)),
           const SizedBox(height: 4),
-          Text('${s.limit}: ${wallet.monthlyLimit.toStringAsFixed(0)} XOF', style: const TextStyle(fontSize: 11, color: C.ink3)),
+          Text('${s.limit}: ${wallet.monthlyLimit.toStringAsFixed(0)} MAD', style: const TextStyle(fontSize: 11, color: C.ink3)),
         ])),
         const SizedBox(width: 16),
         ...[s.maxTx, s.daily, s.monthly].asMap().entries.map((e) {

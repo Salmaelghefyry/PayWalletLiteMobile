@@ -21,7 +21,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
     _textY   = Tween<double>(begin: 20, end: 0).animate(CurvedAnimation(parent: _text, curve: Curves.easeOut));
 
     _logo.forward().then((_) => _text.forward()).then((_) {
-      Future.delayed(const Duration(milliseconds: 900), () {
+      Future.delayed(const Duration(milliseconds: 1000), () {
         if (mounted) context.go(R.language);
       });
     });
@@ -40,7 +40,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
         SafeArea(child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           AnimatedBuilder(animation: _logo, builder: (_, __) => Transform.scale(
             scale: _scale.value, child: Opacity(opacity: _fade.value,
-              child: Image.asset('assets/images/logo.png', width: 160, height: 160)))),
+              child: Image.asset('assets/images/logo_white.png', width: 160, height: 160)))),
           const SizedBox(height: 32),
           AnimatedBuilder(animation: _text, builder: (_, __) => Transform.translate(
             offset: Offset(0, _textY.value),

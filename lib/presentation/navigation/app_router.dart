@@ -9,6 +9,13 @@ import '../pages/offline_payment/transfer_pages.dart';
 import '../pages/other_pages.dart';
 import 'routes.dart';
 import '../../data/mock_data.dart';
+import '../pages/auth/pin_setup_page.dart';
+import '../pages/auth/kyc_upload_page.dart';
+
+import '../pages/wallet/wallets_list_page.dart';
+import '../pages/wallet/create_wallet_page.dart';
+import '../pages/wallet/wallet_detail_page.dart';
+import '../pages/onboarding/service_promo_page.dart';
 
 String _locale(Object? extra) => (extra is Map ? extra['locale'] as String? : null) ?? 'en';
 double _amount(Object? extra) => (extra is Map ? extra['amount'] as double? : null) ?? 0.0;
@@ -43,5 +50,51 @@ final appRouter = GoRouter(
       locale: _locale(s.extra))),
     GoRoute(path: R.settings, builder: (_, s)  => SettingsPage(locale: _locale(s.extra))),
     GoRoute(path: R.syncPage, builder: (_, s)  => SyncPage(locale: _locale(s.extra))),
+    GoRoute(
+      path: R.pinSetup,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return PinSetupPage(locale: extra?['locale'] ?? 'en');
+      },
+    ),
+    GoRoute(
+      path: R.kycUpload,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return KycUploadPage(locale: extra?['locale'] ?? 'en');
+      },
+    ),
+    GoRoute(
+      path: R.walletsList,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return WalletsListPage(locale: extra?['locale'] ?? 'en');
+      },
+    ),
+    GoRoute(
+      path: R.createWallet,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CreateWalletPage(locale: extra?['locale'] ?? 'en');
+      },
+    ),
+    GoRoute(
+      path: R.walletDetail,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return WalletDetailPage(
+          locale: extra?['locale'] ?? 'en',
+          wallet: extra?['wallet'] ?? {},
+        );
+      },
+    ),
+    GoRoute(
+      path: R.servicePromo,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return ServicePromoPage(locale: extra?['locale'] ?? 'en');
+      },
+    ),
   ],
 );
+

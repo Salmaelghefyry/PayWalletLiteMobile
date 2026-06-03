@@ -36,10 +36,10 @@ class BalanceCard extends StatelessWidget {
             style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5, height: 1)),
           const SizedBox(width: 6),
           const Padding(padding: EdgeInsets.only(bottom: 4),
-            child: Text('XOF', style: TextStyle(fontSize: 14, color: Colors.white54, fontWeight: FontWeight.w600))),
+            child: Text('MAD', style: TextStyle(fontSize: 14, color: Colors.white54, fontWeight: FontWeight.w600))),
         ]),
         const SizedBox(height: 2),
-        Text('${wallet.tokenCount} tokens • Max ${wallet.maxTx.toStringAsFixed(0)} XOF',
+        Text('${wallet.tokenCount} tokens • Max ${wallet.maxTx.toStringAsFixed(0)} MAD',
           style: const TextStyle(fontSize: 12, color: Colors.white54)),
         const SizedBox(height: 16),
         Row(children: [

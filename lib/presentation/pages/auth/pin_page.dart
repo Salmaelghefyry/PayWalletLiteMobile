@@ -51,11 +51,10 @@ class _PinPageState extends State<PinPage> with SingleTickerProviderStateMixin {
       body: SafeArea(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(children: [
           const SizedBox(height: 40),
-          Image.asset('assets/images/logo.png', width: 72, height: 72),
+          Image.asset('assets/images/logo_white.png', width: 72, height: 72),
           const SizedBox(height: 18),
           Text(s.enterPin, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: C.navy)),
-          const SizedBox(height: 6),
-          Text(s.demoPin, style: const TextStyle(fontSize: 13, color: C.teal, fontWeight: FontWeight.w600)),
+
           const SizedBox(height: 36),
           AnimatedBuilder(
             animation: _shake,

@@ -65,7 +65,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       Text('${tx.date.day}/${tx.date.month}/${tx.date.year}', style: const TextStyle(fontSize: 11, color: C.ink3)),
                     ])),
                     Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      Text('${tx.isSent ? '-' : '+'}${tx.amount.toStringAsFixed(0)} XOF',
+                      Text('${tx.isSent ? '-' : '+'}${tx.amount.toStringAsFixed(0)} MAD',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: tx.isSent ? C.red : C.green3)),
                       const SizedBox(height: 3),
                       Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -292,7 +292,7 @@ class _SyncPageState extends State<SyncPage> {
             const SizedBox(width: 12),
             const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('To: Oumar Bah', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.ink)),
-              Text('100 XOF · QR · 4/1/2026', style: TextStyle(fontSize: 11, color: C.ink3)),
+              Text('100 MAD · QR · 4/1/2026', style: TextStyle(fontSize: 11, color: C.ink3)),
             ])),
             Badge.pending(),
           ])),

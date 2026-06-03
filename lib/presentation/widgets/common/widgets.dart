@@ -191,7 +191,7 @@ class TxRow extends StatelessWidget {
           ]),
         ])),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('${isSent ? '-' : '+'}${amount.toStringAsFixed(0)} XOF',
+          Text('${isSent ? '-' : '+'}${amount.toStringAsFixed(0)} MAD',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: isSent ? C.red : C.green3)),
           const SizedBox(height: 3),
           Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),

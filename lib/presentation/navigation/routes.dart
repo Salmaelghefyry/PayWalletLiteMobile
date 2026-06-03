@@ -18,4 +18,10 @@ class R {
   static const txDetail  = '/tx-detail';
   static const settings  = '/settings';
   static const syncPage  = '/sync';
+  static const pinSetup  = '/pin-setup';
+  static const kycUpload = '/kyc-upload';
+  static const walletsList  = '/wallets';
+  static const createWallet = '/create-wallet';
+  static const walletDetail = '/wallet-detail';
+  static const servicePromo = '/service-promo';
 }

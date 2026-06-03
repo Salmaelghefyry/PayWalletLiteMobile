@@ -27,7 +27,7 @@ class _LoginPageState extends State<LoginPage> {
               decoration: BoxDecoration(color: C.surface2, borderRadius: BorderRadius.circular(10), border: Border.all(color: C.border)),
               child: const Icon(Icons.arrow_back_rounded, size: 18, color: C.ink2))),
           const SizedBox(width: 12),
-          Image.asset('assets/images/logo.png', width: 32, height: 32),
+          Image.asset('assets/images/logo_white.png', width: 32, height: 32),
           const SizedBox(width: 8),
           RichText(text: const TextSpan(children: [
             TextSpan(text: 'Pay',    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.teal)),
