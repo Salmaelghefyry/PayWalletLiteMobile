@@ -1,16 +1,20 @@
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/localization/strings.dart';
 import '../../../data/mock_data.dart';
 import '../../../domain/entities/entities.dart';
 import '../../navigation/routes.dart';
 import '../../widgets/common/widgets.dart';
-import '../../widgets/wallet/balance_card.dart';
 
 class HomePage extends StatefulWidget {
   final String locale;
-  const HomePage({super.key, required this.locale});
+  final Map<String, dynamic> wallet;
+  const HomePage({super.key, required this.locale, this.wallet = const {}});
   @override State<HomePage> createState() => _HomePageState();
 }
 class _HomePageState extends State<HomePage> {
@@ -21,7 +25,7 @@ class _HomePageState extends State<HomePage> {
     final s = S(widget.locale);
     return Scaffold(
       body: IndexedStack(index: _tab, children: [
-        _HomeTab(locale: widget.locale),
+        _HomeTab(locale: widget.locale, wallet: widget.wallet),
         _WalletTab(locale: widget.locale),
         _ScanTab(locale: widget.locale),
         _MoreTab(locale: widget.locale),
@@ -39,20 +43,44 @@ class _HomePageState extends State<HomePage> {
           ])));
   }
 
-  String get _home => widget.locale;
 }
 
 // ── Home tab ─────────────────────────────────────────────────────────────────
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends StatefulWidget {
   final String locale;
-  const _HomeTab({required this.locale});
+  final Map<String, dynamic> wallet;
+  const _HomeTab({required this.locale, required this.wallet});
+  @override State<_HomeTab> createState() => _HomeTabState();
+}
+class _HomeTabState extends State<_HomeTab> {
+  bool _isOffline = false;
+  StreamSubscription<ConnectivityResult>? _connectivitySub;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((result) {
+      if (mounted) setState(() => _isOffline = result == ConnectivityResult.none);
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final result = await Connectivity().checkConnectivity();
+    if (mounted) setState(() => _isOffline = result == ConnectivityResult.none);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = S(locale);
-    final user   = Mock.user;
-    final wallet = Mock.wallet;
-    final txns   = Mock.transactions;
+    final s    = S(widget.locale);
+    final user = Mock.user;
+    final txns = Mock.transactions;
 
     return CustomScrollView(slivers: [
       SliverAppBar(
@@ -67,17 +95,18 @@ class _HomeTab extends StatelessWidget {
           ])),
         ]),
         actions: [
-          Container(margin: const EdgeInsets.only(right: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: C.amber2, borderRadius: BorderRadius.circular(100)),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.wifi_off_rounded, size: 12, color: C.amber),
-              SizedBox(width: 4),
-              Text('OFFLINE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.amber, letterSpacing: 0.5)),
-            ])),
+          if (_isOffline)
+            Container(margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: C.amber2, borderRadius: BorderRadius.circular(100)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.wifi_off_rounded, size: 12, color: C.amber),
+                SizedBox(width: 4),
+                Text('OFFLINE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.amber, letterSpacing: 0.5)),
+              ])),
           IconButton(icon: const Icon(Icons.notifications_outlined, size: 20), onPressed: () {}),
           Padding(padding: const EdgeInsets.only(right: 16),
-            child: GestureDetector(onTap: () => context.push(R.settings, extra: {'locale': locale}),
+            child: GestureDetector(onTap: () => context.push(R.settings, extra: {'locale': widget.locale}),
               child: Container(width: 32, height: 32, decoration: BoxDecoration(color: C.tealLight, borderRadius: BorderRadius.circular(16)),
                 child: Center(child: Text(user.initials, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.teal)))))),
         ],
@@ -91,19 +120,38 @@ class _HomeTab extends StatelessWidget {
               const SizedBox(width: 10),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: C.tealLight, borderRadius: BorderRadius.circular(100)),
-                child: Text(wallet.tierName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.teal))),
+                child: Text(widget.wallet['type'] as String? ?? '', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.teal))),
             ]),
           ]),
         ])),
-        BalanceCard(wallet: wallet, s: s),
+        _SelectedWalletCard(wallet: widget.wallet, locale: widget.locale, isOffline: _isOffline),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: OutlinedButton.icon(
+              onPressed: widget.wallet.isNotEmpty
+                  ? () => context.push(R.walletDetail, extra: {'locale': widget.locale, 'wallet': widget.wallet})
+                  : null,
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: Text(s.fr ? 'Voir le détail du wallet' : 'View wallet detail'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: C.teal,
+                side: const BorderSide(color: C.teal),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          )),
         const SizedBox(height: 18),
         // Quick actions
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-            QuickBtn(icon: Icons.north_rounded,           label: s.send,   bg: C.blue2,    fg: C.blue,  onTap: () => context.push(R.transfer, extra: {'locale': locale})),
-            QuickBtn(icon: Icons.qr_code_scanner_rounded, label: s.scan,   bg: C.tealLight,fg: C.teal,  onTap: () => context.push(R.scan,     extra: {'locale': locale})),
-            QuickBtn(icon: Icons.token_outlined,          label: s.tokens, bg: C.goldLight, fg: C.gold,  onTap: () {}),
-            QuickBtn(icon: Icons.sync_rounded,            label: s.sync,   bg: C.green2,   fg: C.green, onTap: () => context.push(R.syncPage, extra: {'locale': locale})),
+            QuickBtn(icon: Icons.north_rounded,  label: s.send,    bg: C.blue2,    fg: C.blue,  onTap: () => context.push(R.transfer, extra: {'locale': widget.locale})),
+            QuickBtn(icon: Icons.south_rounded,  label: s.receive, bg: C.green2,   fg: C.green, onTap: () => _showReceiveSheet(context)),
+            QuickBtn(icon: Icons.token_outlined, label: s.tokens,  bg: C.goldLight, fg: C.gold, onTap: () {}),
+            QuickBtn(icon: Icons.sync_rounded,   label: s.sync,    bg: C.green2,   fg: C.green, onTap: () => context.push(R.syncPage, extra: {'locale': widget.locale})),
           ])),
         const SizedBox(height: 14),
         // Pending sync banner
@@ -115,7 +163,7 @@ class _HomeTab extends StatelessWidget {
             const SizedBox(width: 8),
             Text('⚠  1 ${s.pendingSync}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.amber)),
           ])),
-        SecTitle(title: s.recentTxns, action: s.viewAll, onAction: () => context.push(R.history, extra: {'locale': locale})),
+        SecTitle(title: s.recentTxns, action: s.viewAll, onAction: () => context.push(R.history, extra: {'locale': widget.locale})),
         // Transactions
         ListView.separated(
           shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
@@ -134,7 +182,7 @@ class _HomeTab extends StatelessWidget {
               statusLabel: sc[0] as String,
               statusColor: sc[1] as Color,
               statusBg: sc[2] as Color,
-              onTap: () => context.push(R.txDetail, extra: {'tx': tx, 'locale': locale}));
+              onTap: () => context.push(R.txDetail, extra: {'tx': tx, 'locale': widget.locale}));
           }),
         const SizedBox(height: 24),
       ])),
@@ -148,6 +196,244 @@ class _HomeTab extends StatelessWidget {
       case TxStatus.pending:   return [str.statusPending,   C.amber,  C.amber2];
       case TxStatus.failed:    return [str.statusFailed,    C.red,    C.red2];
     }
+  }
+
+  void _showReceiveSheet(BuildContext context) {
+    if (widget.wallet.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ReceiveSheet(locale: widget.locale, wallet: widget.wallet),
+    );
+  }
+}
+
+// ── Receive bottom sheet ──────────────────────────────────────────────────────
+class _ReceiveSheet extends StatefulWidget {
+  final String locale;
+  final Map<String, dynamic> wallet;
+  const _ReceiveSheet({required this.locale, required this.wallet});
+  @override State<_ReceiveSheet> createState() => _ReceiveSheetState();
+}
+class _ReceiveSheetState extends State<_ReceiveSheet> {
+  bool _copied = false;
+
+  Future<void> _copyId(String id) async {
+    await Clipboard.setData(ClipboardData(text: id));
+    setState(() => _copied = true);
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _copied = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S(widget.locale);
+    final w = widget.wallet;
+    final walletId   = w['id']   as String? ?? '';
+    final walletName = w['name'] as String? ?? '';
+    final type       = w['type'] as String? ?? '';
+    final qrData     = 'paywallet://send?to=$walletId&name=$walletName';
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: C.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 24 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Handle
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: C.border, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 20),
+        // Header row
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.fr ? 'Recevoir un paiement' : 'Receive payment',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: C.navy)),
+            if (walletName.isNotEmpty)
+              Text(walletName, style: const TextStyle(fontSize: 13, color: C.ink3)),
+          ])),
+          if (type.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: C.tealLight, borderRadius: BorderRadius.circular(100)),
+              child: Text(type, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.teal))),
+        ]),
+        const SizedBox(height: 24),
+        // QR card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: C.border),
+          ),
+          child: Column(children: [
+            QrImageView(data: qrData, version: QrVersions.auto, size: 220,
+              backgroundColor: Colors.white, foregroundColor: C.ink),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: C.tealLight, borderRadius: BorderRadius.circular(100)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.qr_code_scanner_rounded, color: C.teal, size: 14),
+                const SizedBox(width: 6),
+                Text(s.fr ? 'Scan pour envoyer' : 'Scan to send',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.teal)),
+              ])),
+          ])),
+        const SizedBox(height: 16),
+        // Wallet ID section
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: C.surface2,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: C.border),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.fr ? 'ID du Wallet' : 'Wallet ID',
+              style: const TextStyle(fontSize: 11, color: C.ink3, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text(walletId,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.ink, letterSpacing: 0.2))),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => _copyId(walletId),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _copied ? C.green2 : C.tealLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(_copied ? Icons.check_rounded : Icons.copy_rounded,
+                      size: 14, color: _copied ? C.green : C.teal),
+                    const SizedBox(width: 5),
+                    Text(
+                      _copied ? (s.fr ? 'Copié !' : 'Copied!') : (s.fr ? 'Copier' : 'Copy'),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                        color: _copied ? C.green : C.teal)),
+                  ]),
+                ),
+              ),
+            ]),
+          ])),
+        const SizedBox(height: 12),
+        Text(
+          s.fr
+            ? 'Si le payeur ne peut pas scanner, communiquez-lui l\'ID ci-dessus.'
+            : 'If the sender cannot scan, share the Wallet ID above.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: C.ink3)),
+      ]));
+  }
+}
+
+// ── Selected wallet balance card ─────────────────────────────────────────────
+class _SelectedWalletCard extends StatefulWidget {
+  final Map<String, dynamic> wallet;
+  final String locale;
+  final bool isOffline;
+  const _SelectedWalletCard({required this.wallet, required this.locale, required this.isOffline});
+  @override State<_SelectedWalletCard> createState() => _SelectedWalletCardState();
+}
+class _SelectedWalletCardState extends State<_SelectedWalletCard> {
+  bool _balanceVisible = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S(widget.locale);
+    final w = widget.wallet;
+    final balance        = (w['balance']        as num?)?.toDouble() ?? 0.0;
+    final currency       = w['currency']        as String? ?? 'MAD';
+    final dailyLimit     = (w['dailyLimit']     as num?)?.toDouble() ?? 0.0;
+    final offlineReserve = (w['offlineReserve'] as num?)?.toDouble() ?? 0.0;
+    final name           = w['name']            as String? ?? '';
+    final type           = w['type']            as String? ?? '';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A3A5C), Color(0xFF1BA8C8)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [BoxShadow(color: const Color(0xFF1BA8C8).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))]),
+      child: Stack(children: [
+        Positioned(top: -24, right: -24, child: Container(width: 110, height: 110,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.06)))),
+        Positioned(bottom: -28, left: 20, child: Container(width: 80, height: 80,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.04)))),
+        Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Top row: offline badge (conditional) + type badge
+          Row(children: [
+            if (widget.isOffline) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), borderRadius: BorderRadius.circular(100)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.wifi_off_rounded, size: 12, color: Colors.white70),
+                  SizedBox(width: 4),
+                  Text('OFFLINE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.5)),
+                ])),
+              const SizedBox(width: 8),
+            ],
+            const Spacer(),
+            if (type.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.16), borderRadius: BorderRadius.circular(100)),
+                child: Text(type, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
+          ]),
+          if (name.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(name, style: const TextStyle(fontSize: 12, color: Colors.white54, fontWeight: FontWeight.w500)),
+          ],
+          const SizedBox(height: 8),
+          // Balance label + eye toggle
+          Row(children: [
+            Text(s.availBal, style: const TextStyle(fontSize: 12, color: Colors.white54, fontWeight: FontWeight.w500)),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => setState(() => _balanceVisible = !_balanceVisible),
+              child: Icon(
+                _balanceVisible ? Icons.remove_red_eye_outlined : Icons.visibility_off_outlined,
+                color: Colors.white54,
+                size: 18)),
+          ]),
+          const SizedBox(height: 4),
+          // Balance amount
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                _balanceVisible ? balance.toStringAsFixed(0) : '••••••',
+                key: ValueKey(_balanceVisible),
+                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5, height: 1)),
+            ),
+            const SizedBox(width: 6),
+            Padding(padding: const EdgeInsets.only(bottom: 4),
+              child: Text(currency, style: const TextStyle(fontSize: 14, color: Colors.white54, fontWeight: FontWeight.w600))),
+          ]),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.fr ? 'Offline réservé' : 'Offline reserve', style: const TextStyle(fontSize: 10, color: Colors.white54)),
+              Text(
+                _balanceVisible ? offlineReserve.toStringAsFixed(0) : '•••',
+                style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w700)),
+            ])),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.daily, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+              Text(dailyLimit.toStringAsFixed(0), style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w700)),
+            ])),
+          ]),
+        ])),
+      ]));
   }
 }
 

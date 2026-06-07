@@ -17,9 +17,11 @@ import '../pages/wallet/create_wallet_page.dart';
 import '../pages/wallet/wallet_detail_page.dart';
 import '../pages/onboarding/service_promo_page.dart';
 
-String _locale(Object? extra) => (extra is Map ? extra['locale'] as String? : null) ?? 'en';
-double _amount(Object? extra) => (extra is Map ? extra['amount'] as double? : null) ?? 0.0;
-String _method(Object? extra) => (extra is Map ? extra['method'] as String? : null) ?? 'NFC';
+String _locale(Object? extra)      => (extra is Map ? extra['locale']        as String? : null) ?? 'en';
+double _amount(Object? extra)      => (extra is Map ? extra['amount']        as double? : null) ?? 0.0;
+String _method(Object? extra)      => (extra is Map ? extra['method']        as String? : null) ?? 'NFC';
+String _recipientId(Object? extra) => (extra is Map ? extra['recipientId']   as String? : null) ?? '';
+String _recipientName(Object? extra) => (extra is Map ? extra['recipientName'] as String? : null) ?? '';
 
 final appRouter = GoRouter(
   initialLocation: R.splash,
@@ -29,14 +31,29 @@ final appRouter = GoRouter(
     GoRoute(path: R.login,    builder: (_, s)  => LoginPage(locale: _locale(s.extra))),
     GoRoute(path: R.register, builder: (_, s)  => RegisterPage(locale: _locale(s.extra))),
     GoRoute(path: R.pin,      builder: (_, s)  => PinPage(locale: _locale(s.extra))),
-    GoRoute(path: R.home,     builder: (_, s)  => HomePage(locale: _locale(s.extra))),
+    GoRoute(path: R.home,     builder: (_, s)  => HomePage(
+      locale: _locale(s.extra),
+      wallet: (s.extra is Map ? (s.extra as Map)['wallet'] as Map<String, dynamic>? : null) ?? {},
+    )),
 
-    // Transfer flow
-    GoRoute(path: R.transfer, builder: (_, s)  => TransferPage(locale: _locale(s.extra))),
-    GoRoute(path: R.nfcWait,  builder: (_, s)  => NfcWaitPage(amount: _amount(s.extra), locale: _locale(s.extra))),
-    GoRoute(path: R.bleWait,  builder: (_, s)  => BleWaitPage(amount: _amount(s.extra), locale: _locale(s.extra))),
-    GoRoute(path: R.confirm,  builder: (_, s)  => ConfirmTransferPage(amount: _amount(s.extra), method: _method(s.extra), locale: _locale(s.extra))),
-    GoRoute(path: R.success,  builder: (_, s)  => TransferSuccessPage(amount: _amount(s.extra), method: _method(s.extra), locale: _locale(s.extra))),
+    // Transfer flow — 4 steps
+    GoRoute(path: R.transfer,       builder: (_, s) => RecipientPage(locale: _locale(s.extra))),
+    GoRoute(path: R.transferVerify, builder: (_, s) => RecipientVerifyPage(
+      locale: _locale(s.extra), recipientId: _recipientId(s.extra))),
+    GoRoute(path: R.transferAmount, builder: (_, s) => AmountPage(
+      locale: _locale(s.extra), recipientId: _recipientId(s.extra), recipientName: _recipientName(s.extra))),
+    GoRoute(path: R.nfcWait, builder: (_, s) => NfcWaitPage(
+      amount: _amount(s.extra), locale: _locale(s.extra),
+      recipientId: _recipientId(s.extra), recipientName: _recipientName(s.extra))),
+    GoRoute(path: R.bleWait, builder: (_, s) => BleWaitPage(
+      amount: _amount(s.extra), locale: _locale(s.extra),
+      recipientId: _recipientId(s.extra), recipientName: _recipientName(s.extra))),
+    GoRoute(path: R.confirm, builder: (_, s) => ConfirmTransferPage(
+      amount: _amount(s.extra), method: _method(s.extra), locale: _locale(s.extra),
+      recipientId: _recipientId(s.extra), recipientName: _recipientName(s.extra))),
+    GoRoute(path: R.success, builder: (_, s) => TransferSuccessPage(
+      amount: _amount(s.extra), method: _method(s.extra), locale: _locale(s.extra),
+      recipientName: _recipientName(s.extra))),
     GoRoute(path: R.scan,     builder: (_, s)  => ScanPage(locale: _locale(s.extra))),
     GoRoute(path: R.rxWait,   builder: (_, s)  => ReceiveWaitPage(locale: _locale(s.extra))),
     GoRoute(path: R.rxConfirm,builder: (_, s)  => ReceiveConfirmPage(

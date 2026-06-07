@@ -47,14 +47,18 @@ class _WalletsListPageState extends State<WalletsListPage> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.logout_rounded, color: C.red),
+            onPressed: () => context.go(R.login, extra: {'locale': widget.locale}),
+          ),
+          IconButton(
             icon: const Icon(Icons.add_circle_outline, color: C.teal),
-            onPressed: () => context.go(R.createWallet, extra: {'locale': widget.locale}),
+            onPressed: () => context.push(R.createWallet, extra: {'locale': widget.locale}),
           ),
         ],
       ),
       body: _wallets.isEmpty ? _emptyState(s) : _walletList(s),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go(R.createWallet, extra: {'locale': widget.locale}),
+        onPressed: () => context.push(R.createWallet, extra: {'locale': widget.locale}),
         backgroundColor: C.teal,
         icon: const Icon(Icons.add),
         label: Text(s.fr ? 'Créer un wallet' : 'Create wallet'),
@@ -103,7 +107,7 @@ class _WalletsListPageState extends State<WalletsListPage> {
     final colors = typeColors[w['type']] ?? [C.ink, C.surface3];
 
     return GestureDetector(
-      onTap: () => context.go(R.walletDetail, extra: {
+      onTap: () => context.go(R.home, extra: {
         'locale': widget.locale,
         'wallet': w,
       }),

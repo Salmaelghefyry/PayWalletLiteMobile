@@ -35,7 +35,7 @@ class _PinPageState extends State<PinPage> with SingleTickerProviderStateMixin {
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     if (_pin == '123456') {
-      context.go(R.home, extra: {'locale': widget.locale});
+      context.go(R.walletsList, extra: {'locale': widget.locale});
     } else {
       HapticFeedback.heavyImpact();
       await _shake.forward(from: 0);
@@ -74,7 +74,7 @@ class _PinPageState extends State<PinPage> with SingleTickerProviderStateMixin {
               k.isEmpty ? const SizedBox() : _Key(k, () => _press(k), _loading)).toList()),
           const SizedBox(height: 20),
           GestureDetector(
-            onTap: () => context.go(R.home, extra: {'locale': widget.locale}),
+            onTap: () => context.go(R.walletsList, extra: {'locale': widget.locale}),
             child: Container(padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 30),
               decoration: BoxDecoration(color: C.tealLight, borderRadius: BorderRadius.circular(14)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [

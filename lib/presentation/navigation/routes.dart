@@ -6,8 +6,10 @@ class R {
   static const register  = '/register';
   static const pin       = '/pin';
   static const home      = '/home';
-  static const transfer  = '/transfer';
-  static const nfcWait   = '/nfc-wait';
+  static const transfer        = '/transfer';
+  static const transferVerify = '/transfer-verify';
+  static const transferAmount = '/transfer-amount';
+  static const nfcWait        = '/nfc-wait';
   static const bleWait   = '/ble-wait';
   static const confirm   = '/confirm';
   static const success   = '/success';

@@ -44,6 +44,7 @@ class S {
   String get hello => fr ? 'Bonjour,' : 'Hello,';
   String get availBal => fr ? 'Solde disponible' : 'Available Balance';
   String get send => fr ? 'Envoyer' : 'Send';
+  String get receive => fr ? 'Recevoir' : 'Receive';
   String get tokens => fr ? 'Tokens' : 'Tokens';
   String get sync => fr ? 'Sync' : 'Sync';
   String get pendingSync => fr ? 'sync en attente' : 'pending sync';

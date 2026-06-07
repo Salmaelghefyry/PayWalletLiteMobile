@@ -5,6 +5,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/localization/strings.dart';
 import '../../navigation/routes.dart';
 
+
 class WalletDetailPage extends StatefulWidget {
   final String locale;
   final Map<String, dynamic> wallet;
