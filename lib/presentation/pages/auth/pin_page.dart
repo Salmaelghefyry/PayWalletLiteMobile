@@ -31,7 +31,8 @@ class _PinPageState extends State<PinPage> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _verify() async {
-    setState(() => _loading = true);
+    setState(() =>
+    _loading = true);
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     if (_pin == '123456') {

@@ -17,6 +17,14 @@ class WalletDetailPage extends StatefulWidget {
 
 class _WalletDetailPageState extends State<WalletDetailPage> {
   bool _showQr = false;
+  late double _offlineReserve;
+  bool _saveSuccess = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _offlineReserve = (widget.wallet['offlineReserve'] as num?)?.toDouble() ?? 0.0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +48,17 @@ class _WalletDetailPageState extends State<WalletDetailPage> {
   }
 
   Widget _detailView(Map<String, dynamic> w, S s) {
+    final isBasic = w['type'] == 'BASIC';
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
           _balanceCard(w),
           const SizedBox(height: 20),
+          if (isBasic) ...[
+            _offlineAllocationSection(w, s),
+            const SizedBox(height: 20),
+          ],
           _infoCard(w, s),
           const SizedBox(height: 20),
           _actionButtons(s),
@@ -140,7 +153,7 @@ class _WalletDetailPageState extends State<WalletDetailPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${w['offlineReserve'].toStringAsFixed(0)} ${w['currency']}',
+                      '${_offlineReserve.toStringAsFixed(0)} ${w['currency']}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -207,6 +220,219 @@ class _WalletDetailPageState extends State<WalletDetailPage> {
           Text(
             value,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.ink),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _offlineAllocationSection(Map<String, dynamic> w, S s) {
+    final balance = (w['balance'] as num?)?.toDouble() ?? 0.0;
+    final currency = w['currency'] as String? ?? 'MAD';
+    final isFr = s.fr;
+    final maxReserve = (balance * 0.9).clamp(0.0, 5000.0);
+    final availableOnline = balance - _offlineReserve;
+    final pct = balance > 0 ? (_offlineReserve / balance).clamp(0.0, 1.0) : 0.0;
+    final presets = [0.0, 100.0, 200.0, 500.0].where((p) => p <= maxReserve).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: C.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: C.navy.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: C.navyLight, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.wifi_off_rounded, color: C.navy, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isFr ? 'Réserve Hors-ligne' : 'Offline Cash Reserve',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: C.navy),
+                    ),
+                    Text(
+                      isFr ? 'Fonds utilisables sans connexion' : 'Usable without internet connection',
+                      style: const TextStyle(fontSize: 11, color: C.ink3),
+                    ),
+                  ],
+                ),
+              ),
+              if (_saveSuccess)
+                AnimatedOpacity(
+                  opacity: _saveSuccess ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: C.green2, borderRadius: BorderRadius.circular(100)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check_circle_rounded, size: 12, color: C.green),
+                      SizedBox(width: 4),
+                      Text('OK', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.green)),
+                    ]),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          // Balance breakdown bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              height: 10,
+              child: Row(
+                children: [
+                  Flexible(
+                    flex: (((1 - pct) * 1000).round()).clamp(1, 1000),
+                    child: Container(color: C.teal),
+                  ),
+                  if (_offlineReserve > 0)
+                    Flexible(
+                      flex: ((pct * 1000).round()).clamp(1, 1000),
+                      child: Container(color: C.navy),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Row(children: [
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: C.teal, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(width: 5),
+                Text(
+                  '${availableOnline.toStringAsFixed(0)} $currency ${isFr ? "en ligne" : "online"}',
+                  style: const TextStyle(fontSize: 11, color: C.ink2, fontWeight: FontWeight.w500),
+                ),
+              ]),
+              const Spacer(),
+              Row(children: [
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(width: 5),
+                Text(
+                  '${_offlineReserve.toStringAsFixed(0)} $currency ${isFr ? "offline" : "offline"}',
+                  style: const TextStyle(fontSize: 11, color: C.ink2, fontWeight: FontWeight.w500),
+                ),
+              ]),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Amount display
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(color: C.navyLight, borderRadius: BorderRadius.circular(12)),
+            child: Row(
+              children: [
+                Text(
+                  _offlineReserve.toStringAsFixed(0),
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: C.navy),
+                ),
+                const SizedBox(width: 6),
+                Text(currency, style: const TextStyle(fontSize: 13, color: C.ink3, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: C.navy.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${(pct * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.navy),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Slider
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: C.navy,
+              inactiveTrackColor: C.navyLight,
+              thumbColor: C.navy,
+              overlayColor: C.navy.withOpacity(0.1),
+              valueIndicatorColor: C.navy,
+              valueIndicatorTextStyle: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            child: Slider(
+              value: _offlineReserve.clamp(0.0, maxReserve),
+              min: 0,
+              max: maxReserve > 0 ? maxReserve : 1,
+              divisions: maxReserve > 0 ? (maxReserve / 50).round().clamp(1, 100) : 1,
+              label: '${_offlineReserve.toStringAsFixed(0)} $currency',
+              onChanged: (val) => setState(() {
+                _offlineReserve = ((val / 50).round() * 50.0).clamp(0.0, maxReserve);
+                _saveSuccess = false;
+              }),
+            ),
+          ),
+          // Preset chips
+          Wrap(
+            spacing: 8,
+            children: presets.map((p) {
+              final isSelected = _offlineReserve == p;
+              return GestureDetector(
+                onTap: () => setState(() {
+                  _offlineReserve = p;
+                  _saveSuccess = false;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? C.navy : C.navyLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    p == 0 ? (isFr ? 'Aucune' : 'None') : p.toStringAsFixed(0),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : C.navy,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          // Save button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() => _saveSuccess = true);
+                Future.delayed(const Duration(seconds: 3), () {
+                  if (mounted) setState(() => _saveSuccess = false);
+                });
+              },
+              icon: Icon(_saveSuccess ? Icons.check_rounded : Icons.save_rounded, size: 18),
+              label: Text(
+                _saveSuccess
+                  ? (isFr ? 'Réserve enregistrée !' : 'Reserve saved!')
+                  : (isFr
+                    ? 'Enregistrer : ${_offlineReserve.toStringAsFixed(0)} $currency'
+                    : 'Save: ${_offlineReserve.toStringAsFixed(0)} $currency'),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _saveSuccess ? C.green : C.navy,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
           ),
         ],
       ),

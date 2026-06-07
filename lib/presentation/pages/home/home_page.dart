@@ -343,6 +343,28 @@ class _SelectedWalletCard extends StatefulWidget {
 }
 class _SelectedWalletCardState extends State<_SelectedWalletCard> {
   bool _balanceVisible = true;
+  late double _offlineReserve;
+
+  @override
+  void initState() {
+    super.initState();
+    _offlineReserve = (widget.wallet['offlineReserve'] as num?)?.toDouble() ?? 0.0;
+  }
+
+  void _showAllocationSheet(BuildContext context, double balance, String currency, S s) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OfflineAllocationSheet(
+        locale: widget.locale,
+        balance: balance,
+        currency: currency,
+        currentReserve: _offlineReserve,
+        onSave: (newValue) => setState(() => _offlineReserve = newValue),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +373,6 @@ class _SelectedWalletCardState extends State<_SelectedWalletCard> {
     final balance        = (w['balance']        as num?)?.toDouble() ?? 0.0;
     final currency       = w['currency']        as String? ?? 'MAD';
     final dailyLimit     = (w['dailyLimit']     as num?)?.toDouble() ?? 0.0;
-    final offlineReserve = (w['offlineReserve'] as num?)?.toDouble() ?? 0.0;
     final name           = w['name']            as String? ?? '';
     final type           = w['type']            as String? ?? '';
 
@@ -424,7 +445,7 @@ class _SelectedWalletCardState extends State<_SelectedWalletCard> {
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(s.fr ? 'Offline réservé' : 'Offline reserve', style: const TextStyle(fontSize: 10, color: Colors.white54)),
               Text(
-                _balanceVisible ? offlineReserve.toStringAsFixed(0) : '•••',
+                _balanceVisible ? _offlineReserve.toStringAsFixed(0) : '•••',
                 style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w700)),
             ])),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -432,9 +453,203 @@ class _SelectedWalletCardState extends State<_SelectedWalletCard> {
               Text(dailyLimit.toStringAsFixed(0), style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w700)),
             ])),
           ]),
+          if (type == 'BASIC') ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: () => _showAllocationSheet(context, balance, currency, s),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.wifi_off_rounded, size: 15, color: Colors.white70),
+                  const SizedBox(width: 8),
+                  Text(
+                    s.fr ? 'Allouer la réserve hors-ligne' : 'Allocate offline reserve',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.white54),
+                ]),
+              ),
+            ),
+          ],
         ])),
       ]));
   }
+}
+
+// ── Offline allocation bottom sheet ─────────────────────────────────────────
+class _OfflineAllocationSheet extends StatefulWidget {
+  final String locale;
+  final double balance;
+  final String currency;
+  final double currentReserve;
+  final ValueChanged<double> onSave;
+  const _OfflineAllocationSheet({
+    required this.locale,
+    required this.balance,
+    required this.currency,
+    required this.currentReserve,
+    required this.onSave,
+  });
+  @override State<_OfflineAllocationSheet> createState() => _OfflineAllocationSheetState();
+}
+class _OfflineAllocationSheetState extends State<_OfflineAllocationSheet> {
+  late double _reserve;
+  bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reserve = widget.currentReserve;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S(widget.locale);
+    final isFr = s.fr;
+    final balance = widget.balance;
+    final currency = widget.currency;
+    final maxReserve = (balance * 0.9).clamp(0.0, 5000.0);
+    final pct = balance > 0 ? (_reserve / balance).clamp(0.0, 1.0) : 0.0;
+    final online = balance - _reserve;
+    final presets = [0.0, 100.0, 200.0, 500.0].where((p) => p <= maxReserve).toList();
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: C.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 32 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Handle
+        Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: C.border, borderRadius: BorderRadius.circular(2)))),
+        const SizedBox(height: 20),
+        // Header
+        Row(children: [
+          Container(width: 42, height: 42,
+            decoration: BoxDecoration(color: C.navyLight, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.wifi_off_rounded, color: C.navy, size: 22)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(isFr ? 'Réserve Hors-ligne' : 'Offline Cash Reserve',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: C.navy)),
+            Text(isFr ? 'Fonds disponibles même sans connexion' : 'Available even without internet',
+              style: const TextStyle(fontSize: 12, color: C.ink3)),
+          ])),
+        ]),
+        const SizedBox(height: 22),
+        // Breakdown bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(height: 12, child: Row(children: [
+            Flexible(
+              flex: (((1 - pct) * 1000).round()).clamp(1, 1000),
+              child: Container(color: C.teal)),
+            if (_reserve > 0)
+              Flexible(
+                flex: ((pct * 1000).round()).clamp(1, 1000),
+                child: Container(color: C.navy)),
+          ])),
+        ),
+        const SizedBox(height: 10),
+        Row(children: [
+          _legendDot(C.teal, '${online.toStringAsFixed(0)} $currency ${isFr ? "en ligne" : "online"}'),
+          const Spacer(),
+          _legendDot(C.navy, '${_reserve.toStringAsFixed(0)} $currency ${isFr ? "offline" : "offline"}'),
+        ]),
+        const SizedBox(height: 18),
+        // Amount pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(color: C.navyLight, borderRadius: BorderRadius.circular(14)),
+          child: Row(children: [
+            Text(_reserve.toStringAsFixed(0),
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: C.navy)),
+            const SizedBox(width: 8),
+            Text(currency, style: const TextStyle(fontSize: 14, color: C.ink3, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(color: C.navy.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+              child: Text('${(pct * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.navy))),
+          ]),
+        ),
+        const SizedBox(height: 6),
+        // Slider
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: C.navy, inactiveTrackColor: C.navyLight,
+            thumbColor: C.navy, overlayColor: C.navy.withOpacity(0.1),
+            valueIndicatorColor: C.navy,
+            valueIndicatorTextStyle: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          child: Slider(
+            value: _reserve.clamp(0.0, maxReserve > 0 ? maxReserve : 1),
+            min: 0, max: maxReserve > 0 ? maxReserve : 1,
+            divisions: maxReserve > 0 ? (maxReserve / 50).round().clamp(1, 100) : 1,
+            label: '${_reserve.toStringAsFixed(0)} $currency',
+            onChanged: (val) => setState(() {
+              _reserve = ((val / 50).round() * 50.0).clamp(0.0, maxReserve);
+              _saved = false;
+            }),
+          ),
+        ),
+        // Presets
+        Wrap(spacing: 8, children: presets.map((p) {
+          final sel = _reserve == p;
+          return GestureDetector(
+            onTap: () => setState(() { _reserve = p; _saved = false; }),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: sel ? C.navy : C.navyLight,
+                borderRadius: BorderRadius.circular(10)),
+              child: Text(
+                p == 0 ? (isFr ? 'Aucune' : 'None') : p.toStringAsFixed(0),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                  color: sel ? Colors.white : C.navy))));
+        }).toList()),
+        const SizedBox(height: 18),
+        // Save button
+        SizedBox(
+          width: double.infinity, height: 54,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              widget.onSave(_reserve);
+              setState(() => _saved = true);
+              final nav = Navigator.of(context);
+              Future.delayed(const Duration(milliseconds: 800), () {
+                if (mounted) nav.pop();
+              });
+            },
+            icon: Icon(_saved ? Icons.check_rounded : Icons.save_rounded, size: 20),
+            label: Text(_saved
+              ? (isFr ? 'Enregistré !' : 'Saved!')
+              : (isFr
+                ? 'Confirmer : ${_reserve.toStringAsFixed(0)} $currency'
+                : 'Confirm: ${_reserve.toStringAsFixed(0)} $currency')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _saved ? C.green : C.navy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _legendDot(Color color, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Container(width: 9, height: 9, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+    const SizedBox(width: 5),
+    Text(label, style: const TextStyle(fontSize: 11, color: C.ink2, fontWeight: FontWeight.w500)),
+  ]);
 }
 
 // ── Wallet tab ─────────────────────────────────────────────────────────────

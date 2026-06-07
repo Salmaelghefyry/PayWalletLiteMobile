@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/localization/strings.dart';
 import '../../navigation/routes.dart';
@@ -54,7 +55,6 @@ class RecipientPage extends StatefulWidget {
 }
 class _RecipientPageState extends State<RecipientPage> {
   final _ctrl = TextEditingController();
-  bool _scanning = false;
 
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
@@ -62,11 +62,13 @@ class _RecipientPageState extends State<RecipientPage> {
   String get _id => _ctrl.text.trim();
 
   Future<void> _scanQr() async {
-    setState(() => _scanning = true);
-    await Future.delayed(const Duration(milliseconds: 1600));
-    if (!mounted) return;
-    _ctrl.text = 'WLT-SILVER-7F3A2B9E';
-    setState(() => _scanning = false);
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const _QrScannerPage()),
+    );
+    if (result != null && mounted) {
+      _ctrl.text = result.toUpperCase();
+      setState(() {});
+    }
   }
 
   @override
@@ -124,15 +126,10 @@ class _RecipientPageState extends State<RecipientPage> {
             // QR scan button
             SizedBox(width: double.infinity, height: 56,
               child: OutlinedButton.icon(
-                onPressed: _scanning ? null : _scanQr,
-                icon: _scanning
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: C.teal))
-                  : const Icon(Icons.qr_code_scanner_rounded, color: C.teal),
+                onPressed: _scanQr,
+                icon: const Icon(Icons.qr_code_scanner_rounded, color: C.teal),
                 label: Text(
-                  _scanning
-                    ? (fr ? 'Scan en cours…' : 'Scanning…')
-                    : (fr ? 'Scanner le QR code' : 'Scan QR code'),
+                  fr ? 'Scanner le QR code' : 'Scan QR code',
                   style: const TextStyle(color: C.teal, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: C.teal),
@@ -869,4 +866,123 @@ class _ReceiveConfirmPageState extends State<ReceiveConfirmPage> {
         ])),
       ]));
   }
+}
+
+// ── QR Camera Scanner ─────────────────────────────────────────────────────────
+class _QrScannerPage extends StatefulWidget {
+  const _QrScannerPage();
+  @override State<_QrScannerPage> createState() => _QrScannerPageState();
+}
+class _QrScannerPageState extends State<_QrScannerPage> {
+  bool _detected = false;
+  final MobileScannerController _controller = MobileScannerController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_detected) return;
+    if (capture.barcodes.isEmpty) return;
+    final rawValue = capture.barcodes.first.rawValue;
+    if (rawValue == null || rawValue.isEmpty) return;
+
+    _detected = true;
+    HapticFeedback.mediumImpact();
+
+    // Parse paywallet://send?to=WALLET_ID or treat raw as the ID
+    String walletId = rawValue;
+    try {
+      final uri = Uri.parse(rawValue);
+      if (uri.scheme == 'paywallet' && uri.queryParameters.containsKey('to')) {
+        walletId = uri.queryParameters['to']!;
+      }
+    } catch (_) {}
+
+    Navigator.of(context).pop(walletId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('Scan QR Code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.flash_on_rounded, color: Colors.white),
+            onPressed: () => _controller.toggleTorch(),
+          ),
+        ],
+      ),
+      body: Stack(children: [
+        MobileScanner(controller: _controller, onDetect: _onDetect),
+        // Darkened overlay with transparent scan window
+        CustomPaint(
+          size: Size.infinite,
+          painter: _ScanOverlayPainter(),
+        ),
+        // Corner brackets
+        Center(child: SizedBox(
+          width: 240, height: 240,
+          child: Stack(children: [
+            ...[Alignment.topLeft, Alignment.topRight, Alignment.bottomLeft, Alignment.bottomRight].map((a) =>
+              Align(alignment: a, child: Container(width: 48, height: 48,
+                decoration: BoxDecoration(border: Border(
+                  top:    BorderSide(color: C.teal, width: 4, style: [Alignment.topLeft,    Alignment.topRight].contains(a)    ? BorderStyle.solid : BorderStyle.none),
+                  bottom: BorderSide(color: C.teal, width: 4, style: [Alignment.bottomLeft, Alignment.bottomRight].contains(a) ? BorderStyle.solid : BorderStyle.none),
+                  left:   BorderSide(color: C.teal, width: 4, style: [Alignment.topLeft,    Alignment.bottomLeft].contains(a)  ? BorderStyle.solid : BorderStyle.none),
+                  right:  BorderSide(color: C.teal, width: 4, style: [Alignment.topRight,   Alignment.bottomRight].contains(a) ? BorderStyle.solid : BorderStyle.none),
+                ))))
+            ),
+          ]),
+        )),
+        // Instruction label
+        Align(
+          alignment: const Alignment(0, 0.55),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'Point the camera at the recipient\'s QR code',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _ScanOverlayPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.black.withOpacity(0.55);
+    const side = 240.0;
+    final cx = size.width / 2, cy = size.height / 2;
+    final rect = Rect.fromCenter(center: Offset(cx, cy), width: side, height: side);
+    final full = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    final path = Path()
+      ..addRect(full)
+      ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(4)))
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
 }

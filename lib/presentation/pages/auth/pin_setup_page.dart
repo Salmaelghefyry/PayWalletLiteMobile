@@ -8,6 +8,7 @@ import '../../navigation/routes.dart';
 
 class PinSetupPage extends StatefulWidget {
   final String locale;
+
   const PinSetupPage({super.key, required this.locale});
 
   @override
